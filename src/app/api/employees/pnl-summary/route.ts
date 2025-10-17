@@ -3,21 +3,39 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all employees with their P&L data in a single query
-    const employeesWithPnL = await prisma.employee.findMany({
+    // Get all employees with manager info
+    const employees = await prisma.employee.findMany({
       include: {
-        pnlRecords: {
-          orderBy: { year: 'asc' }
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            title: true
+          }
         }
       }
     })
 
+    // Get all P&L records in one query (using type assertion to bypass TypeScript issue)
+    const allPnlRecords = await (prisma as any).employeePnL.findMany({
+      orderBy: { year: 'asc' }
+    })
+
+    // Group P&L records by employee ID
+    const pnlByEmployee = allPnlRecords.reduce((acc: Record<string, any[]>, record: any) => {
+      if (!acc[record.employeeId]) {
+        acc[record.employeeId] = []
+      }
+      acc[record.employeeId].push(record)
+      return acc
+    }, {} as Record<string, any[]>)
+
     // Calculate P&L summary for each employee
-    const employeesWithSummary = employeesWithPnL.map(employee => {
-      const records = employee.pnlRecords
+    const employeesWithSummary = employees.map(employee => {
+      const records = pnlByEmployee[employee.id] || []
       
-      const totalRevenue = records.reduce((sum, record) => sum + record.attributedRevenue, 0)
-      const totalCost = records.reduce((sum, record) => sum + record.totalCost, 0)
+      const totalRevenue = records.reduce((sum: number, record: any) => sum + record.attributedRevenue, 0)
+      const totalCost = records.reduce((sum: number, record: any) => sum + record.totalCost, 0)
       const netProfit = totalRevenue - totalCost
       const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0
 
@@ -29,11 +47,8 @@ export async function GET(request: NextRequest) {
         yearsCount: records.length,
       }
 
-      // Remove the pnlRecords array from the response to keep it clean
-      const { pnlRecords, ...employeeData } = employee
-
       return {
-        ...employeeData,
+        ...employee,
         pnlSummary
       }
     })
