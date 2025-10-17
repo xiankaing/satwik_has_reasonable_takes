@@ -50,7 +50,7 @@ export default function EmployeeDirectory() {
 
   const departments = ['Executive', 'Engineering', 'Finance', 'Human Resources']
 
-  const fetchEmployees = useCallback(async () => {
+  const fetchEmployees = useCallback(async (currentSearchTerm: string, currentDepartmentFilter: string) => {
     try {
       // First, fetch all employees for fuzzy search
       const allResponse = await fetch('/api/employees')
@@ -60,12 +60,12 @@ export default function EmployeeDirectory() {
         setAllEmployees(allData)
         
         // If there's a search term, use fuzzy search
-        if (searchTerm.trim()) {
+        if (currentSearchTerm.trim()) {
           // First, check for exact and partial acronym matches in titles
           const acronymMatches = allData.filter(employee => {
             const titleWords = employee.title.split(' ').map((word: string) => word.charAt(0).toUpperCase())
             const acronym = titleWords.join('')
-            const searchUpper = searchTerm.toUpperCase()
+            const searchUpper = currentSearchTerm.toUpperCase()
             
             // Check if search term starts with acronym or acronym starts with search term
             return acronym.startsWith(searchUpper) || searchUpper.startsWith(acronym)
@@ -78,14 +78,14 @@ export default function EmployeeDirectory() {
               { name: 'email', weight: 0.2 },
               { name: 'department', weight: 0.1 }
             ],
-            threshold: searchTerm.length <= 3 ? 0.6 : 0.4, // More lenient for short searches
+            threshold: currentSearchTerm.length <= 3 ? 0.6 : 0.4, // More lenient for short searches
             includeScore: true,
             minMatchCharLength: 1,
             shouldSort: true,
             findAllMatches: true
           })
           
-          const results = fuse.search(searchTerm)
+          const results = fuse.search(currentSearchTerm)
           const fuzzyResults = results.map(result => result.item)
           
           // Combine acronym matches with fuzzy results, prioritizing acronym matches
@@ -97,16 +97,16 @@ export default function EmployeeDirectory() {
           
           // Apply department filter if needed
           let finalResults = filteredResults
-          if (departmentFilter && departmentFilter !== 'all') {
-            finalResults = filteredResults.filter(emp => emp.department === departmentFilter)
+          if (currentDepartmentFilter && currentDepartmentFilter !== 'all') {
+            finalResults = filteredResults.filter(emp => emp.department === currentDepartmentFilter)
           }
           
           setEmployees(finalResults)
         } else {
           // No search term, apply department filter only
           let filteredData = allData
-          if (departmentFilter && departmentFilter !== 'all') {
-            filteredData = allData.filter(emp => emp.department === departmentFilter)
+          if (currentDepartmentFilter && currentDepartmentFilter !== 'all') {
+            filteredData = allData.filter(emp => emp.department === currentDepartmentFilter)
           }
           setEmployees(filteredData)
         }
@@ -122,16 +122,12 @@ export default function EmployeeDirectory() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, departmentFilter])
-
-  useEffect(() => {
-    fetchEmployees()
-  }, [fetchEmployees])
+  }, [])
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchEmployees()
-    }, 300)
+      fetchEmployees(searchTerm, departmentFilter)
+    }, 170)
     return () => clearTimeout(timeoutId)
   }, [searchTerm, departmentFilter, fetchEmployees])
 
@@ -153,7 +149,7 @@ export default function EmployeeDirectory() {
         setIsDialogOpen(false)
         setEditingEmployee(null)
         resetForm()
-        fetchEmployees()
+        fetchEmployees(searchTerm, departmentFilter)
       }
     } catch (error) {
       console.error('Error saving employee:', error)
@@ -180,7 +176,7 @@ export default function EmployeeDirectory() {
     if (confirm('Are you sure you want to delete this employee?')) {
       try {
         await fetch(`/api/employees/${id}`, { method: 'DELETE' })
-        fetchEmployees()
+        fetchEmployees(searchTerm, departmentFilter)
       } catch (error) {
         console.error('Error deleting employee:', error)
       }
