@@ -232,15 +232,18 @@ export default function OrgChart() {
       }
     })
 
-    // Find the root (CEO) - employee with no manager
-    const root = employeeData.find(emp => !emp.manager)
-    if (!root) return
+    // Find all top-level employees (those with no manager)
+    const topLevelEmployees = employeeData.filter(emp => !emp.manager)
+    if (topLevelEmployees.length === 0) return
 
-    // Calculate positions using BFS
+    // Calculate positions using BFS starting from all top-level employees
     const visited = new Set<string>()
-    const queue: { employee: Employee; level: number }[] = [
-      { employee: root, level: 0 }
-    ]
+    const queue: { employee: Employee; level: number }[] = []
+    
+    // Add all top-level employees to the queue
+    topLevelEmployees.forEach((employee, index) => {
+      queue.push({ employee, level: 0 })
+    })
 
     const levelCounts = new Map<number, number>()
 
