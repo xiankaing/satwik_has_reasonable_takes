@@ -42,8 +42,8 @@ A modern, web-based Human Resource Information System built with Next.js, TypeSc
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd echelon_interview
+   git clone https://github.com/xiankaing/satwik_has_reasonable_takes.git
+   cd satwik_has_reasonable_takes
    ```
 
 2. **Install dependencies**
