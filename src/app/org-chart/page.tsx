@@ -57,7 +57,7 @@ const nodeTypes = {
         {/* Source handle for outgoing connections (managers) - informational only */}
         <Handle
           type="source"
-          position={Position.Right}
+          position={Position.Bottom}
           id="source"
           style={{ 
             background: '#9ca3af', 
@@ -72,7 +72,7 @@ const nodeTypes = {
         {/* Target handle for incoming connections (reports) - informational only */}
         <Handle
           type="target"
-          position={Position.Left}
+          position={Position.Top}
           id="target"
           style={{ 
             background: '#9ca3af', 
@@ -236,42 +236,98 @@ export default function OrgChart() {
     const topLevelEmployees = employeeData.filter(emp => !emp.manager)
     if (topLevelEmployees.length === 0) return
 
-    // Calculate positions using BFS starting from all top-level employees
-    const visited = new Set<string>()
-    const queue: { employee: Employee; level: number }[] = []
+    // Calculate subtree widths for proper spacing
+    const subtreeWidths = new Map<string, number>()
     
-    // Add all top-level employees to the queue
-    topLevelEmployees.forEach((employee, index) => {
-      queue.push({ employee, level: 0 })
-    })
-
-    const levelCounts = new Map<number, number>()
-
-    while (queue.length > 0) {
-      const { employee, level } = queue.shift()!
+    const calculateSubtreeWidth = (employeeId: string): number => {
+      if (subtreeWidths.has(employeeId)) {
+        return subtreeWidths.get(employeeId)!
+      }
       
-      if (visited.has(employee.id)) continue
+      const reports = employeeData.filter(emp => emp.manager?.id === employeeId)
+      if (reports.length === 0) {
+        subtreeWidths.set(employeeId, 1)
+        return 1
+      }
+      
+      const totalWidth = reports.reduce((sum, report) => {
+        return sum + calculateSubtreeWidth(report.id)
+      }, 0)
+      
+      subtreeWidths.set(employeeId, totalWidth)
+      return totalWidth
+    }
+
+    // Calculate subtree widths for all employees
+    employeeData.forEach(emp => calculateSubtreeWidth(emp.id))
+
+    // Group employees by level
+    const employeesByLevel = new Map<number, Employee[]>()
+    
+    const assignLevels = (employee: Employee, level: number) => {
+      if (!employeesByLevel.has(level)) {
+        employeesByLevel.set(level, [])
+      }
+      employeesByLevel.get(level)!.push(employee)
+      
+      const reports = employeeData.filter(emp => emp.manager?.id === employee.id)
+      reports.forEach(report => assignLevels(report, level + 1))
+    }
+
+    // Assign levels starting from top-level employees
+    topLevelEmployees.forEach(employee => assignLevels(employee, 0))
+
+    // Position employees using a proper hierarchical layout
+    const visited = new Set<string>()
+    
+    const positionEmployeeHierarchy = (employee: Employee, level: number, startX: number, totalWidth: number) => {
+      if (visited.has(employee.id)) return
       visited.add(employee.id)
-
-      // Calculate position
-      const levelCount = levelCounts.get(level) || 0
       
-      const x = level * 350
-      const y = levelCount * 180
+      const y = level * 200
+      const x = startX + totalWidth / 2
       
       positions.set(employee.id, { x, y })
-      
       const node = nodeMap.get(employee.id)!
       node.position = { x, y }
       
-      levelCounts.set(level, levelCount + 1)
-
-      // Add direct reports to queue
+      // Get direct reports
       const reports = employeeData.filter(emp => emp.manager?.id === employee.id)
-      reports.forEach(report => {
-        queue.push({ employee: report, level: level + 1 })
-      })
+      
+      if (reports.length > 0) {
+        // Calculate total width needed for all reports
+        let reportsTotalWidth = 0
+        const reportWidths: number[] = []
+        
+        reports.forEach(report => {
+          const width = subtreeWidths.get(report.id) || 1
+          const reportWidth = width * 250
+          reportWidths.push(reportWidth)
+          reportsTotalWidth += reportWidth
+        })
+        
+        // Add spacing between reports
+        reportsTotalWidth += (reports.length - 1) * 100
+        
+        // Position reports starting from the left edge
+        let currentX = startX
+        reports.forEach((report, index) => {
+          const reportWidth = reportWidths[index]
+          positionEmployeeHierarchy(report, level + 1, currentX, reportWidth)
+          currentX += reportWidth + 100
+        })
+      }
     }
+    
+    // Position top-level employees
+    let topLevelX = 0
+    topLevelEmployees.forEach((employee) => {
+      const width = subtreeWidths.get(employee.id) || 1
+      const employeeWidth = width * 250
+      
+      positionEmployeeHierarchy(employee, 0, topLevelX, employeeWidth)
+      topLevelX += employeeWidth + 200
+    })
 
     setNodes(Array.from(nodeMap.values()))
     setEdges(edgeList)
