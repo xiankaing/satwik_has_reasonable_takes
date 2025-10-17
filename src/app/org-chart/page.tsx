@@ -18,8 +18,11 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Edit } from 'lucide-react'
 
 interface Employee {
   id: string
@@ -95,6 +98,21 @@ export default function OrgChart() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [highlightedEdges, setHighlightedEdges] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    title: '',
+    department: '',
+    email: '',
+    phone: '',
+    hireDate: '',
+    salary: '',
+    status: 'active',
+    managerId: 'none',
+  })
+
+  const departments = ['Executive', 'Engineering', 'Finance', 'Human Resources']
 
   useEffect(() => {
     fetchEmployees()
@@ -140,24 +158,6 @@ export default function OrgChart() {
         type: 'employee',
         data: {
           ...employee,
-          onClick: () => {
-            setSelectedEmployee(employee)
-            // Highlight edges related to this employee
-            const relatedEdges: string[] = []
-            
-            // Add edge from this employee to their manager
-            if (employee.manager) {
-              relatedEdges.push(`${employee.manager.id}-${employee.id}`)
-            }
-            
-            // Add edges from this employee to their direct reports
-            const directReports = employeeData.filter(emp => emp.manager?.id === employee.id)
-            directReports.forEach(report => {
-              relatedEdges.push(`${employee.id}-${report.id}`)
-            })
-            
-            setHighlightedEdges(relatedEdges)
-          },
         },
         position: { x: 0, y: 0 }, // Will be calculated
       }
@@ -229,6 +229,87 @@ export default function OrgChart() {
     [setEdges]
   )
 
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    const employee = employees.find(emp => emp.id === node.id)
+    if (employee) {
+      setSelectedEmployee(employee)
+      // Highlight edges related to this employee
+      const relatedEdges: string[] = []
+      
+      // Add edge from this employee to their manager
+      if (employee.manager) {
+        relatedEdges.push(`${employee.manager.id}-${employee.id}`)
+      }
+      
+      // Add edges from this employee to their direct reports
+      const directReports = employees.filter(emp => emp.manager?.id === employee.id)
+      directReports.forEach(report => {
+        relatedEdges.push(`${employee.id}-${report.id}`)
+      })
+      
+      setHighlightedEdges(relatedEdges)
+    }
+  }, [employees])
+
+  const handleEdit = (employee: Employee) => {
+    setEditingEmployee(employee)
+    setFormData({
+      name: employee.name,
+      title: employee.title,
+      department: employee.department,
+      email: employee.email,
+      phone: employee.phone || '',
+      hireDate: employee.hireDate.split('T')[0],
+      salary: employee.salary.toString(),
+      status: employee.status,
+      managerId: employee.manager?.id || 'none',
+    })
+    setIsEditDialogOpen(true)
+    setSelectedEmployee(null) // Close the details dialog
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingEmployee) return
+
+    try {
+      const submitData = {
+        ...formData,
+        managerId: formData.managerId === 'none' ? '' : formData.managerId,
+      }
+      
+      const response = await fetch(`/api/employees/${editingEmployee.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submitData),
+      })
+
+      if (response.ok) {
+        setIsEditDialogOpen(false)
+        setEditingEmployee(null)
+        fetchEmployees() // Refresh the org chart
+      }
+    } catch (error) {
+      console.error('Error saving employee:', error)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      title: '',
+      department: '',
+      email: '',
+      phone: '',
+      hireDate: '',
+      salary: '',
+      status: 'active',
+      managerId: 'none',
+    })
+  }
+
   if (loading) {
     return <div className="p-6">Loading organizational chart...</div>
   }
@@ -259,6 +340,7 @@ export default function OrgChart() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
@@ -278,7 +360,19 @@ export default function OrgChart() {
       <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Employee Details</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              Employee Details
+              {selectedEmployee && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(selectedEmployee)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           {selectedEmployee && (
             <div className="space-y-4">
@@ -347,6 +441,149 @@ export default function OrgChart() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Employee</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="department">Department</Label>
+              <Select
+                value={formData.department}
+                onValueChange={(value) => setFormData({ ...formData, department: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="hireDate">Hire Date</Label>
+              <Input
+                id="hireDate"
+                type="date"
+                value={formData.hireDate}
+                onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="salary">Salary</Label>
+              <Input
+                id="salary"
+                type="number"
+                value={formData.salary}
+                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="manager">Manager</Label>
+              <Select
+                value={formData.managerId}
+                onValueChange={(value) => setFormData({ ...formData, managerId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No manager</SelectItem>
+                  {employees
+                    .filter(emp => emp.id !== editingEmployee?.id)
+                    .map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.name} ({emp.title})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1">
+                Save Changes
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
