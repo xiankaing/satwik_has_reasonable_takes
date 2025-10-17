@@ -7,9 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Plus, Search, Download, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, Download, Edit, Trash2, X } from 'lucide-react'
 import Link from 'next/link'
-import Fuse from 'fuse.js'
+import { searchEmployees } from '@/lib/searchUtils'
 
 interface Employee {
   id: string
@@ -37,6 +37,8 @@ export default function EmployeeDirectory() {
   const [exactMatchMode, setExactMatchMode] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [managerSearchTerm, setManagerSearchTerm] = useState('')
+  const [filteredManagers, setFilteredManagers] = useState<Employee[]>([])
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -50,6 +52,18 @@ export default function EmployeeDirectory() {
   })
 
   const departments = ['Executive', 'Engineering', 'Finance', 'Human Resources']
+
+  // Filter managers based on search term
+  useEffect(() => {
+    if (!allEmployees.length) {
+      setFilteredManagers([])
+      return
+    }
+
+    const availableManagers = allEmployees.filter(emp => emp.id !== editingEmployee?.id)
+    const searchResults = searchEmployees(availableManagers, managerSearchTerm)
+    setFilteredManagers(searchResults)
+  }, [allEmployees, editingEmployee, managerSearchTerm])
 
   const fetchAllEmployees = useCallback(async () => {
     try {
@@ -81,128 +95,7 @@ export default function EmployeeDirectory() {
 
     // Apply search if there's a search term
     if (currentSearchTerm.trim()) {
-      // Exact match mode - simple case-insensitive search
-      if (isExactMatch) {
-        filteredData = allEmployees.filter(employee => 
-          employee.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-          employee.title.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-          employee.email.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-          employee.department.toLowerCase().includes(currentSearchTerm.toLowerCase())
-        )
-      } else {
-        // Original fuzzy/acronym search logic
-      // First, check for common search acronyms and basic acronym matches
-      const acronymMatches = allEmployees.filter(employee => {
-        const searchUpper = currentSearchTerm.toUpperCase()
-        
-        // Common search acronyms mapping
-        const commonAcronyms: { [key: string]: string[] } = {
-          'SWE': ['Software Engineer', 'Senior Software Engineer'],
-          'SE': ['Software Engineer', 'Senior Software Engineer'],
-          'SSE': ['Senior Software Engineer'],
-          'PM': ['Product Manager', 'Project Manager'],
-          'CEO': ['Chief Executive Officer'],
-          'CTO': ['Chief Technology Officer'],
-          'CFO': ['Chief Financial Officer'],
-          'COO': ['Chief Operating Officer'],
-          'HR': ['Human Resources', 'HR Specialist', 'Director of Human Resources'],
-          'EM': ['Engineering Manager'],
-          'ENG': ['Engineering', 'Engineering Manager'],
-          'FIN': ['Finance', 'Finance Manager', 'Financial'],
-          'FM': ['Finance Manager'],
-          'FA': ['Financial Analyst'],
-          'DEV': ['Developer', 'Software Developer'],
-          'QA': ['Quality Assurance', 'QA Engineer'],
-          'UX': ['UX Designer', 'User Experience Designer'],
-          'UI': ['UI Designer', 'User Interface Designer'],
-          'DS': ['Data Scientist'],
-          'ML': ['Machine Learning Engineer'],
-          'SRE': ['Site Reliability Engineer'],
-          'DBA': ['Database Administrator'],
-          'SA': ['System Administrator'],
-          'BA': ['Business Analyst'],
-          'SM': ['Scrum Master'],
-          'PO': ['Product Owner'],
-          'VP': ['Vice President'],
-          'DIR': ['Director'],
-          'MGR': ['Manager', 'Engineering Manager', 'Finance Manager', 'Product Manager', 'Project Manager'],
-          'LEAD': ['Lead', 'Team Lead', 'Tech Lead'],
-          'ARCH': ['Architect', 'Software Architect', 'Solution Architect'],
-          'CONS': ['Consultant', 'Senior Consultant'],
-          'SPEC': ['Specialist'],
-          'COORD': ['Coordinator'],
-          'SUPER': ['Supervisor'],
-          'EXEC': ['Executive'],
-          'ADMIN': ['Administrator'],
-          'ANALYST': ['Analyst'],
-          'DESIGNER': ['Designer'],
-          'WRITER': ['Writer', 'Technical Writer'],
-          'SUPPORT': ['Support', 'Customer Support'],
-          'SALES': ['Sales', 'Sales Manager', 'Account Manager'],
-          'MARKETING': ['Marketing', 'Marketing Manager'],
-          'OPS': ['Operations', 'Operations Manager'],
-          'SEC': ['Security', 'Security Engineer'],
-          'COMPLIANCE': ['Compliance', 'Compliance Officer'],
-          'LEGAL': ['Legal', 'Legal Counsel'],
-          'COMMS': ['Communications', 'Communications Manager'],
-          'PR': ['Public Relations', 'PR Manager']
-        }
-        
-        // Check if search term matches common acronyms
-        const commonAcronymMatch = commonAcronyms[searchUpper]?.some(titlePattern => 
-          employee.title.includes(titlePattern)
-        ) || false
-        
-        // Check for multi-word acronym searches (e.g., "eng mgr" -> "Engineering Manager")
-        const multiWordAcronymMatch = (() => {
-          const searchWords = searchUpper.split(' ').filter(word => word.length > 0)
-          if (searchWords.length <= 1) return false
-          
-          // Check if each word in the search matches a common acronym
-          const matchedPatterns = searchWords.map(word => commonAcronyms[word] || [])
-          
-          // For multi-word searches, we want ALL words to match patterns in the title
-          // This ensures "eng mgr" only matches titles that contain both Engineering AND Manager
-          return matchedPatterns.every(patternSet => 
-            patternSet.some(pattern => employee.title.includes(pattern))
-          )
-        })()
-        
-        // Generate basic acronym (first letter of each word)
-        const titleWords = employee.title.split(' ').filter(word => word.length > 0)
-        const basicAcronym = titleWords.map(word => word.charAt(0).toUpperCase()).join('')
-        
-        // Check basic acronym matches
-        const basicMatch = basicAcronym.startsWith(searchUpper) || searchUpper.startsWith(basicAcronym)
-        const substringMatch = basicAcronym.includes(searchUpper)
-        
-        return commonAcronymMatch || multiWordAcronymMatch || basicMatch || substringMatch
-      })
-      
-      const fuse = new Fuse(allEmployees, {
-        keys: [
-          { name: 'name', weight: 0.4 },
-          { name: 'title', weight: 0.3 },
-          { name: 'email', weight: 0.2 },
-          { name: 'department', weight: 0.1 }
-        ],
-        threshold: currentSearchTerm.length <= 3 ? 0.6 : 0.4, // More lenient for short searches
-        includeScore: true,
-        minMatchCharLength: 1,
-        shouldSort: true,
-        findAllMatches: true
-      })
-      
-      const results = fuse.search(currentSearchTerm)
-      const fuzzyResults = results.map(result => result.item)
-      
-      // Combine acronym matches with fuzzy results, prioritizing acronym matches
-      const combinedResults = [...acronymMatches, ...fuzzyResults.filter(emp => 
-        !acronymMatches.some(acronymEmp => acronymEmp.id === emp.id)
-      )]
-      
-      filteredData = combinedResults
-      }
+      filteredData = searchEmployees(allEmployees, currentSearchTerm, isExactMatch)
     }
 
     // Apply department filter
@@ -264,6 +157,7 @@ export default function EmployeeDirectory() {
       status: employee.status,
       managerId: employee.manager?.id || '',
     })
+    setManagerSearchTerm('') // Reset search term
     setIsDialogOpen(true)
   }
 
@@ -290,6 +184,7 @@ export default function EmployeeDirectory() {
       status: 'active',
       managerId: '',
     })
+    setManagerSearchTerm('') // Reset search term
   }
 
   const handleAddNew = () => {
@@ -519,6 +414,69 @@ export default function EmployeeDirectory() {
                 </Select>
               </div>
             </div>
+            
+            {/* Manager Selection */}
+            <div>
+              <Label htmlFor="manager">Manager</Label>
+              
+              {/* Search input */}
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search managers..."
+                  value={managerSearchTerm}
+                  onChange={(e) => setManagerSearchTerm(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {managerSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setManagerSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Manager selection */}
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, managerId: '' })}
+                    className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                      formData.managerId === '' ? 'bg-blue-50 text-blue-700' : ''
+                    }`}
+                  >
+                    <div className="font-medium">No manager (Top level)</div>
+                  </button>
+                </div>
+                
+                {filteredManagers.map((emp) => (
+                  <div key={emp.id} className="p-2 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, managerId: emp.id })}
+                      className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                        formData.managerId === emp.id ? 'bg-blue-50 text-blue-700' : ''
+                      }`}
+                    >
+                      <div className="font-medium">{emp.name}</div>
+                      <div className="text-sm text-gray-600">{emp.title}</div>
+                      <div className="text-xs text-gray-500">{emp.department}</div>
+                    </button>
+                  </div>
+                ))}
+                
+                {filteredManagers.length === 0 && managerSearchTerm && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No managers found matching "{managerSearchTerm}"
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel

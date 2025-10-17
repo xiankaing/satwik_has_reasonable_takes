@@ -22,7 +22,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { ArrowLeft, Edit } from 'lucide-react'
+import { ArrowLeft, Edit, Users, UserPlus, Search, X } from 'lucide-react'
+import { searchEmployees } from '@/lib/searchUtils'
 
 interface Employee {
   id: string
@@ -54,20 +55,34 @@ const nodeTypes = {
             ? 'border-green-300 bg-green-50' 
             : 'border-gray-200'
       }`}>
-        {/* Source handle for outgoing connections (managers) */}
+        {/* Source handle for outgoing connections (managers) - informational only */}
         <Handle
           type="source"
           position={Position.Right}
           id="source"
-          style={{ background: '#374151', width: 8, height: 8 }}
+          style={{ 
+            background: '#9ca3af', 
+            width: 6, 
+            height: 6,
+            border: '1px solid #6b7280',
+            cursor: 'not-allowed'
+          }}
+          isConnectable={false}
         />
         
-        {/* Target handle for incoming connections (reports) */}
+        {/* Target handle for incoming connections (reports) - informational only */}
         <Handle
           type="target"
           position={Position.Left}
           id="target"
-          style={{ background: '#374151', width: 8, height: 8 }}
+          style={{ 
+            background: '#9ca3af', 
+            width: 6, 
+            height: 6,
+            border: '1px solid #6b7280',
+            cursor: 'not-allowed'
+          }}
+          isConnectable={false}
         />
         
         <div className="text-center">
@@ -100,6 +115,11 @@ export default function OrgChart() {
   const [loading, setLoading] = useState(true)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [isManagerChangeDialogOpen, setIsManagerChangeDialogOpen] = useState(false)
+  const [managerChangeEmployee, setManagerChangeEmployee] = useState<Employee | null>(null)
+  const [newManagerId, setNewManagerId] = useState('none')
+  const [managerSearchTerm, setManagerSearchTerm] = useState('')
+  const [filteredManagers, setFilteredManagers] = useState<Employee[]>([])
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -117,6 +137,18 @@ export default function OrgChart() {
   useEffect(() => {
     fetchEmployees()
   }, [])
+
+  // Filter managers based on search term
+  useEffect(() => {
+    if (!employees.length || !managerChangeEmployee) {
+      setFilteredManagers([])
+      return
+    }
+
+    const availableManagers = employees.filter(emp => emp.id !== managerChangeEmployee.id)
+    const searchResults = searchEmployees(availableManagers, managerSearchTerm)
+    setFilteredManagers(searchResults)
+  }, [employees, managerChangeEmployee, managerSearchTerm])
 
   // Update edge highlighting when highlightedEdges changes
   useEffect(() => {
@@ -225,8 +257,11 @@ export default function OrgChart() {
   }
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    (params: Connection) => {
+      // Disable line drawing - reporting relationships should only be changed through the edit dialog
+      console.log('Line drawing disabled - use edit dialog to change reporting relationships')
+    },
+    []
   )
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
@@ -266,6 +301,41 @@ export default function OrgChart() {
     })
     setIsEditDialogOpen(true)
     setSelectedEmployee(null) // Close the details dialog
+  }
+
+  const handleQuickManagerChange = (employee: Employee) => {
+    setManagerChangeEmployee(employee)
+    setNewManagerId(employee.manager?.id || 'none')
+    setManagerSearchTerm('') // Reset search term
+    setIsManagerChangeDialogOpen(true)
+    setSelectedEmployee(null) // Close the details dialog
+  }
+
+  const handleManagerChangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!managerChangeEmployee) return
+
+    try {
+      const response = await fetch(`/api/employees/${managerChangeEmployee.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          managerId: newManagerId === 'none' ? '' : newManagerId,
+        }),
+      })
+
+      if (response.ok) {
+        setIsManagerChangeDialogOpen(false)
+        setManagerChangeEmployee(null)
+        fetchEmployees() // Refresh the org chart
+      } else {
+        console.error('Failed to update manager:', await response.text())
+      }
+    } catch (error) {
+      console.error('Error updating manager:', error)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -363,14 +433,24 @@ export default function OrgChart() {
             <DialogTitle className="flex items-center justify-between">
               Employee Details
               {selectedEmployee && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEdit(selectedEmployee)}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleQuickManagerChange(selectedEmployee)}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Change Manager
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(selectedEmployee)}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -584,6 +664,102 @@ export default function OrgChart() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Manager Change Dialog */}
+      <Dialog open={isManagerChangeDialogOpen} onOpenChange={setIsManagerChangeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Manager</DialogTitle>
+          </DialogHeader>
+          {managerChangeEmployee && (
+            <form onSubmit={handleManagerChangeSubmit} className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600">
+                  <strong>Employee:</strong> {managerChangeEmployee.name}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Current Manager:</strong> {managerChangeEmployee.manager?.name || 'No manager'}
+                </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="newManager">New Manager</Label>
+                
+                {/* Search input */}
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search managers..."
+                    value={managerSearchTerm}
+                    onChange={(e) => setManagerSearchTerm(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {managerSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setManagerSearchTerm('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Manager selection */}
+                <div className="border rounded-md max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewManagerId('none')}
+                      className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                        newManagerId === 'none' ? 'bg-blue-50 text-blue-700' : ''
+                      }`}
+                    >
+                      <div className="font-medium">No manager (Top level)</div>
+                    </button>
+                  </div>
+                  
+                  {filteredManagers.map((emp) => (
+                    <div key={emp.id} className="p-2 border-t">
+                      <button
+                        type="button"
+                        onClick={() => setNewManagerId(emp.id)}
+                        className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                          newManagerId === emp.id ? 'bg-blue-50 text-blue-700' : ''
+                        }`}
+                      >
+                        <div className="font-medium">{emp.name}</div>
+                        <div className="text-sm text-gray-600">{emp.title}</div>
+                        <div className="text-xs text-gray-500">{emp.department}</div>
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {filteredManagers.length === 0 && managerSearchTerm && (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      No managers found matching "{managerSearchTerm}"
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" className="flex-1">
+                  Update Manager
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsManagerChangeDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

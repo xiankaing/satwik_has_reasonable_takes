@@ -52,19 +52,22 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
+    // Build update data object with only provided fields
+    const updateData: any = {}
+    
+    if (body.name !== undefined) updateData.name = body.name
+    if (body.title !== undefined) updateData.title = body.title
+    if (body.department !== undefined) updateData.department = body.department
+    if (body.email !== undefined) updateData.email = body.email
+    if (body.phone !== undefined) updateData.phone = body.phone || null
+    if (body.hireDate !== undefined) updateData.hireDate = new Date(body.hireDate)
+    if (body.salary !== undefined) updateData.salary = parseFloat(body.salary)
+    if (body.status !== undefined) updateData.status = body.status || 'active'
+    if (body.managerId !== undefined) updateData.managerId = body.managerId || null
+    
     const employee = await prisma.employee.update({
       where: { id },
-      data: {
-        name: body.name,
-        title: body.title,
-        department: body.department,
-        email: body.email,
-        phone: body.phone || null,
-        hireDate: new Date(body.hireDate),
-        salary: parseFloat(body.salary),
-        status: body.status || 'active',
-        managerId: body.managerId || null,
-      },
+      data: updateData,
       include: {
         manager: {
           select: {
