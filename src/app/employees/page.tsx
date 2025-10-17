@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -48,11 +48,7 @@ export default function EmployeeDirectory() {
 
   const departments = ['Executive', 'Engineering', 'Finance', 'Human Resources']
 
-  useEffect(() => {
-    fetchEmployees()
-  }, [])
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (searchTerm) params.append('search', searchTerm)
@@ -60,20 +56,32 @@ export default function EmployeeDirectory() {
       
       const response = await fetch(`/api/employees?${params}`)
       const data = await response.json()
-      setEmployees(data)
+      
+      // Check if the response is successful and contains an array
+      if (response.ok && Array.isArray(data)) {
+        setEmployees(data)
+      } else {
+        console.error('Error fetching employees:', data.error || 'Unknown error')
+        setEmployees([]) // Set empty array as fallback
+      }
     } catch (error) {
       console.error('Error fetching employees:', error)
+      setEmployees([]) // Set empty array as fallback
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchTerm, departmentFilter])
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [fetchEmployees])
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchEmployees()
     }, 300)
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, departmentFilter])
+  }, [searchTerm, departmentFilter, fetchEmployees])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -213,7 +221,7 @@ export default function EmployeeDirectory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.map((employee) => (
+            {Array.isArray(employees) && employees.map((employee) => (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">{employee.name}</TableCell>
                 <TableCell>{employee.title}</TableCell>
