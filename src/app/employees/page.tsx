@@ -81,33 +81,12 @@ export default function EmployeeDirectory() {
   const fetchAllEmployees = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/employees')
+      const response = await fetch('/api/employees/pnl-summary')
       const data = await response.json()
       
       if (response.ok && Array.isArray(data)) {
-        // Fetch P&L summary for each employee
-        const employeesWithPnL = await Promise.all(
-          data.map(async (employee: Employee) => {
-            try {
-              const pnlResponse = await fetch(`/api/employees/${employee.id}/pnl`)
-              const pnlData = await pnlResponse.json()
-              
-              if (pnlResponse.ok && pnlData.summary) {
-                return {
-                  ...employee,
-                  pnlSummary: pnlData.summary
-                }
-              }
-              return employee
-            } catch (error) {
-              console.error(`Error fetching P&L for ${employee.name}:`, error)
-              return employee
-            }
-          })
-        )
-        
-        setAllEmployees(employeesWithPnL)
-        setEmployees(employeesWithPnL) // Show all employees initially
+        setAllEmployees(data)
+        setEmployees(data) // Show all employees initially
       } else {
         console.error('Error fetching employees:', data.error || 'Unknown error')
         setEmployees([])
