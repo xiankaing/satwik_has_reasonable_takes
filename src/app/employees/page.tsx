@@ -34,6 +34,7 @@ export default function EmployeeDirectory() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [exactMatchMode, setExactMatchMode] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState({
@@ -73,13 +74,23 @@ export default function EmployeeDirectory() {
     }
   }, [])
 
-  const searchAndFilterEmployees = useCallback((currentSearchTerm: string, currentDepartmentFilter: string) => {
+  const searchAndFilterEmployees = useCallback((currentSearchTerm: string, currentDepartmentFilter: string, isExactMatch: boolean) => {
     if (!allEmployees.length) return
 
     let filteredData = allEmployees
 
     // Apply search if there's a search term
     if (currentSearchTerm.trim()) {
+      // Exact match mode - simple case-insensitive search
+      if (isExactMatch) {
+        filteredData = allEmployees.filter(employee => 
+          employee.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+          employee.title.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+          employee.email.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+          employee.department.toLowerCase().includes(currentSearchTerm.toLowerCase())
+        )
+      } else {
+        // Original fuzzy/acronym search logic
       // First, check for common search acronyms and basic acronym matches
       const acronymMatches = allEmployees.filter(employee => {
         const searchUpper = currentSearchTerm.toUpperCase()
@@ -191,6 +202,7 @@ export default function EmployeeDirectory() {
       )]
       
       filteredData = combinedResults
+      }
     }
 
     // Apply department filter
@@ -209,10 +221,10 @@ export default function EmployeeDirectory() {
   // Debounced search and filter
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      searchAndFilterEmployees(searchTerm, departmentFilter)
+      searchAndFilterEmployees(searchTerm, departmentFilter, exactMatchMode)
     }, 170)
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, departmentFilter, searchAndFilterEmployees])
+  }, [searchTerm, departmentFilter, exactMatchMode, searchAndFilterEmployees])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -318,6 +330,18 @@ export default function EmployeeDirectory() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="exact-match" className="text-sm font-medium whitespace-nowrap">
+            Exact Match
+          </Label>
+          <input
+            id="exact-match"
+            type="checkbox"
+            checked={exactMatchMode}
+            onChange={(e) => setExactMatchMode(e.target.checked)}
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
           />
         </div>
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
