@@ -314,11 +314,6 @@ export default function EmployeeDirectory() {
         </Table>
       </div>
 
-      <div className="mt-6 text-center">
-        <Link href="/org-chart">
-          <Button variant="outline">View Organizational Chart</Button>
-        </Link>
-      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">

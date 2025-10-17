@@ -21,8 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import Link from 'next/link'
-import { ArrowLeft, Edit, Users, Search, X } from 'lucide-react'
+import { Edit, Search, X } from 'lucide-react'
 import { searchEmployees } from '@/lib/searchUtils'
 
 interface Employee {
@@ -351,13 +350,7 @@ export default function OrgChart() {
 
   return (
     <div className="h-screen w-full">
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <Link href="/employees">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Directory
-          </Button>
-        </Link>
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
         {highlightedEdges.length > 0 && (
           <Button 
             variant="outline" 
