@@ -61,11 +61,14 @@ export default function EmployeeDirectory() {
         
         // If there's a search term, use fuzzy search
         if (searchTerm.trim()) {
-          // First, check for exact acronym matches in titles
+          // First, check for exact and partial acronym matches in titles
           const acronymMatches = allData.filter(employee => {
             const titleWords = employee.title.split(' ').map((word: string) => word.charAt(0).toUpperCase())
             const acronym = titleWords.join('')
-            return acronym.includes(searchTerm.toUpperCase())
+            const searchUpper = searchTerm.toUpperCase()
+            
+            // Check if search term starts with acronym or acronym starts with search term
+            return acronym.startsWith(searchUpper) || searchUpper.startsWith(acronym)
           })
           
           const fuse = new Fuse(allData, {
