@@ -341,7 +341,7 @@ export default function OrgChart() {
   const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
     // Use ReactFlow's node positions to find overlapping nodes
     const draggedNode = node
-    const threshold = 200 // pixels - larger threshold for easier detection
+    const threshold = 50 // pixels - only trigger on actual overlap
     
     // Find the closest node by comparing positions
     let closestTarget: string | null = null
@@ -407,7 +407,7 @@ export default function OrgChart() {
     let finalDropTarget = dropTarget
     if (!finalDropTarget) {
       const draggedNode = node
-      const threshold = 250 // slightly larger threshold for final detection
+      const threshold = 60 // slightly larger threshold for final detection, but still tight
       
       let closestTarget: string | null = null
       let minDistance = Infinity
