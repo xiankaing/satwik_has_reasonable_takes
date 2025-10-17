@@ -15,7 +15,7 @@ interface PnLChartProps {
   height?: number
 }
 
-export function PnLChart({ records, width = 400, height = 200 }: PnLChartProps) {
+export function PnLChart({ records, width = 600, height = 350 }: PnLChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function PnLChart({ records, width = 400, height = 200 }: PnLChartProps) 
     const maxValue = Math.max(...revenues, ...costs)
 
     // Chart dimensions
-    const padding = 40
+    const padding = 60
     const chartWidth = width - padding * 2
     const chartHeight = height - padding * 2
 
@@ -144,7 +144,7 @@ export function PnLChart({ records, width = 400, height = 200 }: PnLChartProps) 
     for (let i = 0; i <= 4; i++) {
       const value = (maxValue / 4) * i
       const y = height - padding - (chartHeight / 4) * i
-      ctx.fillText(`$${(value / 1000).toFixed(0)}K`, padding - 10, y + 4)
+      ctx.fillText(`$${(value / 1000).toFixed(0)}K`, padding - 15, y + 5)
     }
 
     // Legend
@@ -167,7 +167,9 @@ export function PnLChart({ records, width = 400, height = 200 }: PnLChartProps) 
   return (
     <div className="bg-white rounded-lg border p-4">
       <h3 className="text-lg font-semibold mb-4">P&L Trend</h3>
-      <canvas ref={canvasRef} className="w-full" />
+      <div className="w-full overflow-x-auto">
+        <canvas ref={canvasRef} className="w-full max-w-full" />
+      </div>
     </div>
   )
 }

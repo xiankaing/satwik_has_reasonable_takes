@@ -53,6 +53,7 @@ export default function EmployeeDirectory() {
   const [pnlData, setPnlData] = useState<any>(null)
   const [pnlLoading, setPnlLoading] = useState(false)
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -310,7 +311,10 @@ export default function EmployeeDirectory() {
                 <TableRow key={employee.id}>
                   <TableCell className="font-medium sticky left-0 bg-white z-20">
                     <button
-                      onClick={() => setSelectedEmployeeDetails(employee)}
+                      onClick={() => {
+                        setSelectedEmployeeDetails(employee)
+                        setIsDetailsDialogOpen(true)
+                      }}
                       className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
                     >
                       {employee.name}
@@ -381,7 +385,7 @@ export default function EmployeeDirectory() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name" className="mb-2">Name</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -390,7 +394,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title" className="mb-2">Title</Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -399,7 +403,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="department">Department</Label>
+                <Label htmlFor="department" className="mb-2">Department</Label>
                 <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select department" />
@@ -414,7 +418,7 @@ export default function EmployeeDirectory() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="mb-2">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -424,7 +428,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone" className="mb-2">Phone</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
@@ -432,7 +436,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="hireDate">Hire Date</Label>
+                <Label htmlFor="hireDate" className="mb-2">Hire Date</Label>
                 <Input
                   id="hireDate"
                   type="date"
@@ -442,7 +446,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="salary">Salary</Label>
+                <Label htmlFor="salary" className="mb-2">Salary</Label>
                 <Input
                   id="salary"
                   type="number"
@@ -452,7 +456,7 @@ export default function EmployeeDirectory() {
                 />
               </div>
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status" className="mb-2">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -468,7 +472,7 @@ export default function EmployeeDirectory() {
             
             {/* Manager Selection */}
             <div>
-              <Label htmlFor="manager">Manager</Label>
+              <Label htmlFor="manager" className="mb-2">Manager</Label>
               
               {/* Search input */}
               <div className="relative mb-2">
@@ -557,41 +561,41 @@ export default function EmployeeDirectory() {
               <div className="space-y-6">
                 {/* Summary Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-sm text-green-600 font-medium">Total Revenue</div>
-                    <div className="text-2xl font-bold text-green-800">
+                  <div className="bg-green-50 p-2 rounded-lg min-w-0">
+                    <div className="text-xs text-green-600 font-medium">Total Revenue</div>
+                    <div className="text-xs font-bold text-green-800">
                       ${pnlData.summary.totalRevenue.toLocaleString()}
                     </div>
                   </div>
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <div className="text-sm text-red-600 font-medium">Total Cost</div>
-                    <div className="text-2xl font-bold text-red-800">
+                  <div className="bg-red-50 p-2 rounded-lg min-w-0">
+                    <div className="text-xs text-red-600 font-medium">Total Cost</div>
+                    <div className="text-xs font-bold text-red-800">
                       ${pnlData.summary.totalCost.toLocaleString()}
                     </div>
                   </div>
-                  <div className={`p-4 rounded-lg ${
+                  <div className={`p-2 rounded-lg min-w-0 ${
                     pnlData.summary.netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'
                   }`}>
-                    <div className={`text-sm font-medium ${
+                    <div className={`text-xs font-medium ${
                       pnlData.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       Net Profit
                     </div>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-xs font-bold ${
                       pnlData.summary.netProfit >= 0 ? 'text-green-800' : 'text-red-800'
                     }`}>
                       ${pnlData.summary.netProfit.toLocaleString()}
                     </div>
                   </div>
-                  <div className={`p-4 rounded-lg ${
+                  <div className={`p-2 rounded-lg min-w-0 ${
                     pnlData.summary.roi >= 0 ? 'bg-green-50' : 'bg-red-50'
                   }`}>
-                    <div className={`text-sm font-medium ${
+                    <div className={`text-xs font-medium ${
                       pnlData.summary.roi >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       ROI
                     </div>
-                    <div className={`text-2xl font-bold ${
+                    <div className={`text-xs font-bold ${
                       pnlData.summary.roi >= 0 ? 'text-green-800' : 'text-red-800'
                     }`}>
                       {pnlData.summary.roi.toFixed(1)}%
@@ -618,11 +622,17 @@ export default function EmployeeDirectory() {
       </Dialog>
 
       {/* Employee Details Dialog */}
-      <Dialog open={!!selectedEmployeeDetails} onOpenChange={() => setSelectedEmployeeDetails(null)}>
+      <Dialog open={isDetailsDialogOpen} onOpenChange={(open) => {
+        setIsDetailsDialogOpen(open)
+        if (!open) {
+          // Small delay to prevent flash
+          setTimeout(() => setSelectedEmployeeDetails(null), 150)
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Employee Details - {selectedEmployeeDetails?.name}
+              {selectedEmployeeDetails ? `Employee Details - ${selectedEmployeeDetails.name}` : 'Employee Details'}
             </DialogTitle>
           </DialogHeader>
           {selectedEmployeeDetails && (
@@ -753,7 +763,8 @@ export default function EmployeeDirectory() {
                   variant="outline"
                   onClick={() => {
                     handleEdit(selectedEmployeeDetails)
-                    setSelectedEmployeeDetails(null)
+                    setIsDetailsDialogOpen(false)
+                    setTimeout(() => setSelectedEmployeeDetails(null), 150)
                   }}
                 >
                   <Edit className="w-4 h-4 mr-2" />

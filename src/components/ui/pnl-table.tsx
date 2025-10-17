@@ -34,12 +34,12 @@ export function PnLTable({ records, showNotes = false }: PnLTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Year</TableHead>
-            <TableHead className="text-right">Attributed Revenue</TableHead>
-            <TableHead className="text-right">Total Cost</TableHead>
-            <TableHead className="text-right">Profit</TableHead>
-            <TableHead className="text-right">ROI</TableHead>
-            {showNotes && <TableHead>Notes</TableHead>}
+            <TableHead className="px-3 py-2 text-xs">Year</TableHead>
+            <TableHead className="text-right px-3 py-2 text-xs">Attributed Revenue</TableHead>
+            <TableHead className="text-right px-3 py-2 text-xs">Total Cost</TableHead>
+            <TableHead className="text-right px-3 py-2 text-xs">Profit</TableHead>
+            <TableHead className="text-right px-3 py-2 text-xs">ROI</TableHead>
+            {showNotes && <TableHead className="px-3 py-2 text-xs">Notes</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -49,25 +49,25 @@ export function PnLTable({ records, showNotes = false }: PnLTableProps) {
             
             return (
               <TableRow key={record.id}>
-                <TableCell className="font-medium">{record.year}</TableCell>
-                <TableCell className="text-right text-green-600">
+                <TableCell className="font-medium px-3 py-2 text-sm">{record.year}</TableCell>
+                <TableCell className="text-right text-green-600 px-3 py-2 text-sm">
                   {formatCurrency(record.attributedRevenue)}
                 </TableCell>
-                <TableCell className="text-right text-red-600">
+                <TableCell className="text-right text-red-600 px-3 py-2 text-sm">
                   {formatCurrency(record.totalCost)}
                 </TableCell>
-                <TableCell className={`text-right font-medium ${
+                <TableCell className={`text-right font-medium px-3 py-2 text-sm ${
                   profit >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {formatCurrency(profit)}
                 </TableCell>
-                <TableCell className={`text-right font-medium ${
+                <TableCell className={`text-right font-medium px-3 py-2 text-sm ${
                   roi >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {roi.toFixed(1)}%
                 </TableCell>
                 {showNotes && (
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-xs text-gray-500 px-3 py-2">
                     {record.notes || '-'}
                   </TableCell>
                 )}
