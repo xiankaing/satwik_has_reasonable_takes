@@ -26,6 +26,7 @@ import { searchEmployees } from '@/lib/searchUtils'
 import { ROIBadge } from '@/components/ui/roi-badge'
 import { PnLTable } from '@/components/ui/pnl-table'
 import { PnLChart } from '@/components/ui/pnl-chart'
+import { PnLDetailsDialog } from '@/components/ui/pnl-details-dialog'
 
 interface Employee {
   id: string
@@ -153,8 +154,6 @@ export default function OrgChart() {
     newManager: Employee | null
   } | null>(null)
   const [selectedEmployeePnL, setSelectedEmployeePnL] = useState<Employee | null>(null)
-  const [pnlData, setPnlData] = useState<any>(null)
-  const [pnlLoading, setPnlLoading] = useState(false)
 
   const departments = ['Executive', 'Engineering', 'Finance', 'Human Resources']
 
@@ -677,21 +676,8 @@ export default function OrgChart() {
     setPendingManagerChange(null)
   }
 
-  const fetchEmployeePnL = async (employee: Employee) => {
-    try {
-      setPnlLoading(true)
-      const response = await fetch(`/api/employees/${employee.id}/pnl`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setPnlData(data)
-        setSelectedEmployeePnL(employee)
-      }
-    } catch (error) {
-      console.error('Error fetching P&L data:', error)
-    } finally {
-      setPnlLoading(false)
-    }
+  const handleViewPnL = (employee: Employee) => {
+    setSelectedEmployeePnL(employee)
   }
 
   if (loading) {
@@ -756,7 +742,7 @@ export default function OrgChart() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => fetchEmployeePnL(selectedEmployee)}
+                    onClick={() => handleViewPnL(selectedEmployee)}
                   >
                     <TrendingUp className="w-4 h-4 mr-2" />
                     P&L
@@ -1130,81 +1116,12 @@ export default function OrgChart() {
       </Dialog>
 
       {/* P&L Detail Dialog */}
-      <Dialog open={!!selectedEmployeePnL} onOpenChange={() => setSelectedEmployeePnL(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>
-              P&L Details - {selectedEmployeePnL?.name}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
-            {pnlLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <div className="text-gray-500">Loading P&L data...</div>
-              </div>
-            ) : pnlData ? (
-              <div className="space-y-6">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 p-2 rounded-lg min-w-0">
-                    <div className="text-xs text-green-600 font-medium">Total Revenue</div>
-                    <div className="text-xs font-bold text-green-800">
-                      ${pnlData.summary.totalRevenue.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="bg-red-50 p-2 rounded-lg min-w-0">
-                    <div className="text-xs text-red-600 font-medium">Total Cost</div>
-                    <div className="text-xs font-bold text-red-800">
-                      ${pnlData.summary.totalCost.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className={`p-2 rounded-lg min-w-0 ${
-                    pnlData.summary.netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'
-                  }`}>
-                    <div className={`text-xs font-medium ${
-                      pnlData.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      Net Profit
-                    </div>
-                    <div className={`text-xs font-bold ${
-                      pnlData.summary.netProfit >= 0 ? 'text-green-800' : 'text-red-800'
-                    }`}>
-                      ${pnlData.summary.netProfit.toLocaleString()}
-                    </div>
-                  </div>
-                  <div className={`p-2 rounded-lg min-w-0 ${
-                    pnlData.summary.roi >= 0 ? 'bg-green-50' : 'bg-red-50'
-                  }`}>
-                    <div className={`text-xs font-medium ${
-                      pnlData.summary.roi >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      ROI
-                    </div>
-                    <div className={`text-xs font-bold ${
-                      pnlData.summary.roi >= 0 ? 'text-green-800' : 'text-red-800'
-                    }`}>
-                      {pnlData.summary.roi.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Chart */}
-                <PnLChart records={pnlData.records} />
-
-                {/* Detailed Table */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Year-by-Year Breakdown</h3>
-                  <PnLTable records={pnlData.records} showNotes={true} />
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-48">
-                <div className="text-gray-500">No P&L data available</div>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PnLDetailsDialog
+        isOpen={!!selectedEmployeePnL}
+        onClose={() => setSelectedEmployeePnL(null)}
+        employeeId={selectedEmployeePnL?.id || null}
+        employeeName={selectedEmployeePnL?.name || null}
+      />
 
     </div>
   )
