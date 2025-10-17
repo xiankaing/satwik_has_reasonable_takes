@@ -107,13 +107,8 @@ export default function OrgChart() {
         ...edge,
         style: {
           ...edge.style,
-          stroke: highlightedEdges.includes(edge.id) ? '#dc2626' : '#374151',
-          strokeWidth: highlightedEdges.includes(edge.id) ? 4 : 3,
-        },
-        labelStyle: {
-          fontSize: 12,
-          fill: highlightedEdges.includes(edge.id) ? '#dc2626' : '#374151',
-          fontWeight: 'bold',
+          stroke: highlightedEdges.includes(edge.id) ? '#dc2626' : '#6b7280',
+          strokeWidth: highlightedEdges.includes(edge.id) ? 3 : 2,
         },
       }))
       setEdges(updatedEdges)
@@ -180,20 +175,8 @@ export default function OrgChart() {
           targetHandle: 'target',
           type: 'straight',
           style: {
-            stroke: '#374151',
-            strokeWidth: 3,
-          },
-          label: 'reports to',
-          labelStyle: {
-            fontSize: 12,
-            fill: '#374151',
-            fontWeight: 'bold',
-          },
-          labelBgStyle: {
-            fill: 'white',
-            fillOpacity: 0.9,
-            stroke: '#374151',
-            strokeWidth: 1,
+            stroke: '#6b7280',
+            strokeWidth: 2,
           },
         })
       }
@@ -282,8 +265,8 @@ export default function OrgChart() {
         defaultEdgeOptions={{
           type: 'straight',
           style: {
-            stroke: '#374151',
-            strokeWidth: 3,
+            stroke: '#6b7280',
+            strokeWidth: 2,
           },
         }}
       >
