@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Menu, X, Users, BarChart3, Home } from 'lucide-react'
+import { Menu, X, Users, BarChart3, Home, TrendingUp } from 'lucide-react'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -14,6 +14,7 @@ export default function Navigation() {
     { href: '/', label: 'Home', icon: Home },
     { href: '/employees', label: 'Employee Directory', icon: Users },
     { href: '/org-chart', label: 'Org Chart', icon: BarChart3 },
+    { href: '/analytics', label: 'Analytics', icon: TrendingUp },
   ]
 
   return (

@@ -184,8 +184,64 @@ async function main() {
     },
   })
 
+  // Generate P&L data for all employees
+  const employees = await prisma.employee.findMany()
+  const currentYear = new Date().getFullYear()
+  
+  for (const employee of employees) {
+    const hireYear = employee.hireDate.getFullYear()
+    const yearsWorked = currentYear - hireYear + 1 // Include current year
+    
+    // Determine revenue attribution based on role
+    let baseRevenue: number
+    let growthRate: number
+    
+    if (employee.title.includes('Chief') || employee.title.includes('CEO')) {
+      baseRevenue = 3000000 // $3M base for executives
+      growthRate = 0.12 // 12% growth
+    } else if (employee.title.includes('Director') || employee.title.includes('Manager')) {
+      baseRevenue = 1000000 // $1M base for managers
+      growthRate = 0.10 // 10% growth
+    } else if (employee.title.includes('Senior')) {
+      baseRevenue = 600000 // $600K base for senior roles
+      growthRate = 0.08 // 8% growth
+    } else {
+      baseRevenue = 300000 // $300K base for junior roles
+      growthRate = 0.15 // 15% growth (higher growth potential)
+    }
+    
+    // Generate P&L records for each year
+    for (let yearOffset = 0; yearOffset < yearsWorked; yearOffset++) {
+      const year = hireYear + yearOffset
+      
+      // Calculate revenue with growth and some randomness
+      const growthFactor = Math.pow(1 + growthRate, yearOffset)
+      const randomFactor = 0.9 + Math.random() * 0.2 // ±10% variance
+      const attributedRevenue = baseRevenue * growthFactor * randomFactor
+      
+      // Calculate total cost (salary + 40% overhead for benefits, equipment, etc.)
+      const totalCost = employee.salary * 1.4
+      
+      // Add some notes for context
+      const notes = yearOffset === 0 
+        ? `First year - ${employee.title}`
+        : `Year ${yearOffset + 1} - Performance impact`
+      
+      await prisma.employeePnL.create({
+        data: {
+          employeeId: employee.id,
+          year,
+          attributedRevenue: Math.round(attributedRevenue),
+          totalCost: Math.round(totalCost),
+          notes,
+        },
+      })
+    }
+  }
+  
   console.log('Seed data created successfully!')
   console.log(`Created ${await prisma.employee.count()} employees`)
+  console.log(`Created ${await prisma.employeePnL.count()} P&L records`)
 }
 
 main()

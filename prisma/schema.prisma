@@ -23,8 +23,24 @@ model Employee {
   managerId   String?
   manager     Employee? @relation("ManagerReports", fields: [managerId], references: [id])
   reports     Employee[] @relation("ManagerReports")
+  pnlRecords  EmployeePnL[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("employees")
+}
+
+model EmployeePnL {
+  id                String   @id @default(cuid())
+  employeeId        String
+  year              Int
+  attributedRevenue Float
+  totalCost         Float
+  notes             String?
+  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([employeeId, year])
+  @@map("employee_pnl")
 }

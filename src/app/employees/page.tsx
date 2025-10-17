@@ -7,9 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Plus, Search, Download, Edit, Trash2, X } from 'lucide-react'
+import { Plus, Search, Download, Edit, Trash2, X, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { searchEmployees } from '@/lib/searchUtils'
+import { ROIBadge } from '@/components/ui/roi-badge'
+import { PnLTable } from '@/components/ui/pnl-table'
+import { PnLChart } from '@/components/ui/pnl-chart'
 
 interface Employee {
   id: string
@@ -26,6 +29,13 @@ interface Employee {
     name: string
     title: string
   }
+  pnlSummary?: {
+    totalRevenue: number
+    totalCost: number
+    netProfit: number
+    roi: number
+    yearsCount: number
+  }
 }
 
 export default function EmployeeDirectory() {
@@ -39,6 +49,9 @@ export default function EmployeeDirectory() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [managerSearchTerm, setManagerSearchTerm] = useState('')
   const [filteredManagers, setFilteredManagers] = useState<Employee[]>([])
+  const [selectedEmployeePnL, setSelectedEmployeePnL] = useState<Employee | null>(null)
+  const [pnlData, setPnlData] = useState<any>(null)
+  const [pnlLoading, setPnlLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -72,8 +85,29 @@ export default function EmployeeDirectory() {
       const data = await response.json()
       
       if (response.ok && Array.isArray(data)) {
-        setAllEmployees(data)
-        setEmployees(data) // Show all employees initially
+        // Fetch P&L summary for each employee
+        const employeesWithPnL = await Promise.all(
+          data.map(async (employee: Employee) => {
+            try {
+              const pnlResponse = await fetch(`/api/employees/${employee.id}/pnl`)
+              const pnlData = await pnlResponse.json()
+              
+              if (pnlResponse.ok && pnlData.summary) {
+                return {
+                  ...employee,
+                  pnlSummary: pnlData.summary
+                }
+              }
+              return employee
+            } catch (error) {
+              console.error(`Error fetching P&L for ${employee.name}:`, error)
+              return employee
+            }
+          })
+        )
+        
+        setAllEmployees(employeesWithPnL)
+        setEmployees(employeesWithPnL) // Show all employees initially
       } else {
         console.error('Error fetching employees:', data.error || 'Unknown error')
         setEmployees([])
@@ -197,6 +231,23 @@ export default function EmployeeDirectory() {
     window.open('/api/employees/export', '_blank')
   }
 
+  const fetchEmployeePnL = async (employee: Employee) => {
+    try {
+      setPnlLoading(true)
+      const response = await fetch(`/api/employees/${employee.id}/pnl`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setPnlData(data)
+        setSelectedEmployeePnL(employee)
+      }
+    } catch (error) {
+      console.error('Error fetching P&L data:', error)
+    } finally {
+      setPnlLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="p-6">Loading...</div>
   }
@@ -267,6 +318,7 @@ export default function EmployeeDirectory() {
               <TableHead>Salary</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>ROI</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -291,7 +343,22 @@ export default function EmployeeDirectory() {
                   </span>
                 </TableCell>
                 <TableCell>
+                  {employee.pnlSummary ? (
+                    <ROIBadge roi={employee.pnlSummary.roi} size="sm" />
+                  ) : (
+                    <span className="text-gray-400 text-xs">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fetchEmployeePnL(employee)}
+                      title="View P&L Details"
+                    >
+                      <TrendingUp className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -481,6 +548,83 @@ export default function EmployeeDirectory() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* P&L Detail Dialog */}
+      <Dialog open={!!selectedEmployeePnL} onOpenChange={() => setSelectedEmployeePnL(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              P&L Details - {selectedEmployeePnL?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            {pnlLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="text-gray-500">Loading P&L data...</div>
+              </div>
+            ) : pnlData ? (
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="text-sm text-green-600 font-medium">Total Revenue</div>
+                    <div className="text-2xl font-bold text-green-800">
+                      ${pnlData.summary.totalRevenue.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <div className="text-sm text-red-600 font-medium">Total Cost</div>
+                    <div className="text-2xl font-bold text-red-800">
+                      ${pnlData.summary.totalCost.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-lg ${
+                    pnlData.summary.netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'
+                  }`}>
+                    <div className={`text-sm font-medium ${
+                      pnlData.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      Net Profit
+                    </div>
+                    <div className={`text-2xl font-bold ${
+                      pnlData.summary.netProfit >= 0 ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      ${pnlData.summary.netProfit.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className={`p-4 rounded-lg ${
+                    pnlData.summary.roi >= 0 ? 'bg-green-50' : 'bg-red-50'
+                  }`}>
+                    <div className={`text-sm font-medium ${
+                      pnlData.summary.roi >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      ROI
+                    </div>
+                    <div className={`text-2xl font-bold ${
+                      pnlData.summary.roi >= 0 ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {pnlData.summary.roi.toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chart */}
+                <PnLChart records={pnlData.records} />
+
+                {/* Detailed Table */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Year-by-Year Breakdown</h3>
+                  <PnLTable records={pnlData.records} showNotes={true} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-48">
+                <div className="text-gray-500">No P&L data available</div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
