@@ -120,6 +120,8 @@ export default function OrgChart() {
   const [newManagerId, setNewManagerId] = useState('none')
   const [managerSearchTerm, setManagerSearchTerm] = useState('')
   const [filteredManagers, setFilteredManagers] = useState<Employee[]>([])
+  const [editManagerSearchTerm, setEditManagerSearchTerm] = useState('')
+  const [filteredEditManagers, setFilteredEditManagers] = useState<Employee[]>([])
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -149,6 +151,18 @@ export default function OrgChart() {
     const searchResults = searchEmployees(availableManagers, managerSearchTerm)
     setFilteredManagers(searchResults)
   }, [employees, managerChangeEmployee, managerSearchTerm])
+
+  // Filter managers for edit dialog based on search term
+  useEffect(() => {
+    if (!employees.length || !editingEmployee) {
+      setFilteredEditManagers([])
+      return
+    }
+
+    const availableManagers = employees.filter(emp => emp.id !== editingEmployee.id)
+    const searchResults = searchEmployees(availableManagers, editManagerSearchTerm)
+    setFilteredEditManagers(searchResults)
+  }, [employees, editingEmployee, editManagerSearchTerm])
 
   // Update edge highlighting when highlightedEdges changes
   useEffect(() => {
@@ -299,6 +313,7 @@ export default function OrgChart() {
       status: employee.status,
       managerId: employee.manager?.id || 'none',
     })
+    setEditManagerSearchTerm('') // Reset search term
     setIsEditDialogOpen(true)
     setSelectedEmployee(null) // Close the details dialog
   }
@@ -526,11 +541,12 @@ export default function OrgChart() {
 
       {/* Edit Employee Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Edit Employee</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex-1 overflow-y-auto">
+            <form id="edit-employee-form" onSubmit={handleSubmit} className="space-y-4 pr-2">
             <div>
               <Label htmlFor="name">Name</Label>
               <Input
@@ -630,40 +646,98 @@ export default function OrgChart() {
             
             <div>
               <Label htmlFor="manager">Manager</Label>
-              <Select
-                value={formData.managerId}
-                onValueChange={(value) => setFormData({ ...formData, managerId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select manager" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No manager</SelectItem>
-                  {employees
-                    .filter(emp => emp.id !== editingEmployee?.id)
-                    .map((emp) => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.name} ({emp.title})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              
+              {/* Search input */}
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search managers..."
+                  value={editManagerSearchTerm}
+                  onChange={(e) => setEditManagerSearchTerm(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {editManagerSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setEditManagerSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Manager selection */}
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <div className="p-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, managerId: 'none' })}
+                    className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                      formData.managerId === 'none' ? 'bg-blue-50 text-blue-700' : ''
+                    }`}
+                  >
+                    <div className="font-medium">No manager (Top level)</div>
+                  </button>
+                </div>
+                
+                {/* Show current manager at the top of search results if it exists */}
+                {editingEmployee?.manager && (
+                  <div className="p-2 border-t">
+                    <div className="text-xs text-green-600 font-medium mb-1">Current Manager</div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, managerId: editingEmployee.manager!.id })}
+                      className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                        formData.managerId === editingEmployee.manager.id ? 'bg-blue-50 text-blue-700' : 'bg-green-50'
+                      }`}
+                    >
+                      <div className="font-medium">{editingEmployee.manager.name}</div>
+                      <div className="text-sm text-gray-600">{editingEmployee.manager.title}</div>
+                    </button>
+                  </div>
+                )}
+                
+                {filteredEditManagers
+                  .filter(emp => emp.id !== editingEmployee?.manager?.id) // Exclude current manager from regular results
+                  .map((emp) => (
+                    <div key={emp.id} className="p-2 border-t">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, managerId: emp.id })}
+                        className={`w-full text-left p-2 rounded hover:bg-gray-100 ${
+                          formData.managerId === emp.id ? 'bg-blue-50 text-blue-700' : ''
+                        }`}
+                      >
+                        <div className="font-medium">{emp.name}</div>
+                        <div className="text-sm text-gray-600">{emp.title}</div>
+                        <div className="text-xs text-gray-500">{emp.department}</div>
+                      </button>
+                    </div>
+                  ))}
+                
+                {filteredEditManagers.length === 0 && editManagerSearchTerm && (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No managers found matching "{editManagerSearchTerm}"
+                  </div>
+                )}
+              </div>
             </div>
-            
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" className="flex-1">
-                Save Changes
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
+            </form>
+          </div>
+          <div className="flex gap-2 pt-4 border-t">
+            <Button type="submit" form="edit-employee-form" className="flex-1">
+              Save Changes
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
