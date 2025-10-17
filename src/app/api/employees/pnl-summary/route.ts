@@ -3,26 +3,29 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all employees with manager info
+    // Fetch all employees first
     const employees = await prisma.employee.findMany({
       include: {
         manager: {
           select: {
             id: true,
             name: true,
-            title: true
-          }
-        }
-      }
+            title: true,
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
     })
 
-    // Get all P&L records in one query (using type assertion to bypass TypeScript issue)
-    const allPnlRecords = await (prisma as any).employeePnL.findMany({
-      orderBy: { year: 'asc' }
+    // Fetch all P&L records in a single query
+    const pnlRecords = await prisma.employeePnL.findMany({
+      orderBy: { year: 'asc' },
     })
 
     // Group P&L records by employee ID
-    const pnlByEmployee = allPnlRecords.reduce((acc: Record<string, any[]>, record: any) => {
+    const pnlByEmployee = pnlRecords.reduce((acc: Record<string, any[]>, record: any) => {
       if (!acc[record.employeeId]) {
         acc[record.employeeId] = []
       }
@@ -30,12 +33,12 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, any[]>)
 
-    // Calculate P&L summary for each employee
-    const employeesWithSummary = employees.map(employee => {
-      const records = pnlByEmployee[employee.id] || []
+    // Calculate P&L summaries for each employee
+    const employeesWithPnL = employees.map(employee => {
+      const employeePnlRecords = pnlByEmployee[employee.id] || []
       
-      const totalRevenue = records.reduce((sum: number, record: any) => sum + record.attributedRevenue, 0)
-      const totalCost = records.reduce((sum: number, record: any) => sum + record.totalCost, 0)
+      const totalRevenue = employeePnlRecords.reduce((sum: number, record: any) => sum + record.attributedRevenue, 0)
+      const totalCost = employeePnlRecords.reduce((sum: number, record: any) => sum + record.totalCost, 0)
       const netProfit = totalRevenue - totalCost
       const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0
 
@@ -44,20 +47,20 @@ export async function GET(request: NextRequest) {
         totalCost,
         netProfit,
         roi,
-        yearsCount: records.length,
+        yearsCount: employeePnlRecords.length,
       }
 
       return {
         ...employee,
-        pnlSummary
+        pnlSummary,
       }
     })
 
-    return NextResponse.json(employeesWithSummary)
+    return NextResponse.json(employeesWithPnL)
   } catch (error) {
-    console.error('Error fetching employees with P&L summary:', error)
+    console.error('Error fetching employees with P&L summaries:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch employees with P&L summary' },
+      { error: 'Failed to fetch employees with P&L summaries' },
       { status: 500 }
     )
   }

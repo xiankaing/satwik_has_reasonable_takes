@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { Edit, Search, X, TrendingUp } from 'lucide-react'
+import { Edit, Search, X, TrendingUp, RefreshCw } from 'lucide-react'
 import { searchEmployees } from '@/lib/searchUtils'
 import { ROIBadge } from '@/components/ui/roi-badge'
 import { PnLTable } from '@/components/ui/pnl-table'
@@ -128,6 +128,7 @@ export default function OrgChart() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [highlightedEdges, setHighlightedEdges] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [editManagerSearchTerm, setEditManagerSearchTerm] = useState('')
@@ -202,34 +203,37 @@ export default function OrgChart() {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('/api/employees')
-      const data = await response.json()
+      setError(null)
+      setLoading(true)
       
-      // Fetch P&L summary for each employee
-      const employeesWithPnL = await Promise.all(
-        data.map(async (employee: Employee) => {
-          try {
-            const pnlResponse = await fetch(`/api/employees/${employee.id}/pnl`)
-            const pnlData = await pnlResponse.json()
-            
-            if (pnlResponse.ok && pnlData.summary) {
-              return {
-                ...employee,
-                pnlSummary: pnlData.summary
-              }
-            }
-            return employee
-          } catch (error) {
-            console.error(`Error fetching P&L for ${employee.name}:`, error)
-            return employee
-          }
-        })
-      )
+      // Use the bulk API endpoint to fetch all employees with P&L summaries in one request
+      const response = await fetch('/api/employees/pnl-summary')
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch employees: ${response.status} ${response.statusText}`)
+      }
+      
+      const employeesWithPnL = await response.json()
       
       setEmployees(employeesWithPnL)
       buildOrgChart(employeesWithPnL)
     } catch (error) {
       console.error('Error fetching employees:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load organizational chart')
+      
+      // Fallback to basic employee data without P&L if the bulk endpoint fails
+      try {
+        const fallbackResponse = await fetch('/api/employees')
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json()
+          setEmployees(fallbackData)
+          buildOrgChart(fallbackData)
+          setError(null) // Clear error if fallback succeeds
+        }
+      } catch (fallbackError) {
+        console.error('Error fetching fallback employee data:', fallbackError)
+        // Keep the original error if fallback also fails
+      }
     } finally {
       setLoading(false)
     }
@@ -681,12 +685,43 @@ export default function OrgChart() {
   }
 
   if (loading) {
-    return <div className="p-6">Loading organizational chart...</div>
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading organizational chart...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to Load Chart</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={() => fetchEmployees()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="h-screen w-full">
       <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => fetchEmployees()}
+          disabled={loading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
         {highlightedEdges.length > 0 && (
           <Button 
             variant="outline" 
