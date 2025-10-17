@@ -80,14 +80,92 @@ export default function EmployeeDirectory() {
 
     // Apply search if there's a search term
     if (currentSearchTerm.trim()) {
-      // First, check for exact and partial acronym matches in titles
+      // First, check for common search acronyms and basic acronym matches
       const acronymMatches = allEmployees.filter(employee => {
-        const titleWords = employee.title.split(' ').map((word: string) => word.charAt(0).toUpperCase())
-        const acronym = titleWords.join('')
         const searchUpper = currentSearchTerm.toUpperCase()
         
-        // Check if search term starts with acronym or acronym starts with search term
-        return acronym.startsWith(searchUpper) || searchUpper.startsWith(acronym)
+        // Common search acronyms mapping
+        const commonAcronyms: { [key: string]: string[] } = {
+          'SWE': ['Software Engineer', 'Senior Software Engineer'],
+          'SE': ['Software Engineer', 'Senior Software Engineer'],
+          'SSE': ['Senior Software Engineer'],
+          'PM': ['Product Manager', 'Project Manager'],
+          'CEO': ['Chief Executive Officer'],
+          'CTO': ['Chief Technology Officer'],
+          'CFO': ['Chief Financial Officer'],
+          'COO': ['Chief Operating Officer'],
+          'HR': ['Human Resources', 'HR Specialist', 'Director of Human Resources'],
+          'EM': ['Engineering Manager'],
+          'ENG': ['Engineering', 'Engineering Manager'],
+          'FIN': ['Finance', 'Finance Manager', 'Financial'],
+          'FM': ['Finance Manager'],
+          'FA': ['Financial Analyst'],
+          'DEV': ['Developer', 'Software Developer'],
+          'QA': ['Quality Assurance', 'QA Engineer'],
+          'UX': ['UX Designer', 'User Experience Designer'],
+          'UI': ['UI Designer', 'User Interface Designer'],
+          'DS': ['Data Scientist'],
+          'ML': ['Machine Learning Engineer'],
+          'SRE': ['Site Reliability Engineer'],
+          'DBA': ['Database Administrator'],
+          'SA': ['System Administrator'],
+          'BA': ['Business Analyst'],
+          'SM': ['Scrum Master'],
+          'PO': ['Product Owner'],
+          'VP': ['Vice President'],
+          'DIR': ['Director'],
+          'MGR': ['Manager', 'Engineering Manager', 'Finance Manager', 'Product Manager', 'Project Manager'],
+          'LEAD': ['Lead', 'Team Lead', 'Tech Lead'],
+          'ARCH': ['Architect', 'Software Architect', 'Solution Architect'],
+          'CONS': ['Consultant', 'Senior Consultant'],
+          'SPEC': ['Specialist'],
+          'COORD': ['Coordinator'],
+          'SUPER': ['Supervisor'],
+          'EXEC': ['Executive'],
+          'ADMIN': ['Administrator'],
+          'ANALYST': ['Analyst'],
+          'DESIGNER': ['Designer'],
+          'WRITER': ['Writer', 'Technical Writer'],
+          'SUPPORT': ['Support', 'Customer Support'],
+          'SALES': ['Sales', 'Sales Manager', 'Account Manager'],
+          'MARKETING': ['Marketing', 'Marketing Manager'],
+          'OPS': ['Operations', 'Operations Manager'],
+          'SEC': ['Security', 'Security Engineer'],
+          'COMPLIANCE': ['Compliance', 'Compliance Officer'],
+          'LEGAL': ['Legal', 'Legal Counsel'],
+          'COMMS': ['Communications', 'Communications Manager'],
+          'PR': ['Public Relations', 'PR Manager']
+        }
+        
+        // Check if search term matches common acronyms
+        const commonAcronymMatch = commonAcronyms[searchUpper]?.some(titlePattern => 
+          employee.title.includes(titlePattern)
+        ) || false
+        
+        // Check for multi-word acronym searches (e.g., "eng mgr" -> "Engineering Manager")
+        const multiWordAcronymMatch = (() => {
+          const searchWords = searchUpper.split(' ').filter(word => word.length > 0)
+          if (searchWords.length <= 1) return false
+          
+          // Check if each word in the search matches a common acronym
+          const matchedPatterns = searchWords.map(word => commonAcronyms[word] || [])
+          
+          // For multi-word searches, we want ALL words to match patterns in the title
+          // This ensures "eng mgr" only matches titles that contain both Engineering AND Manager
+          return matchedPatterns.every(patternSet => 
+            patternSet.some(pattern => employee.title.includes(pattern))
+          )
+        })()
+        
+        // Generate basic acronym (first letter of each word)
+        const titleWords = employee.title.split(' ').filter(word => word.length > 0)
+        const basicAcronym = titleWords.map(word => word.charAt(0).toUpperCase()).join('')
+        
+        // Check basic acronym matches
+        const basicMatch = basicAcronym.startsWith(searchUpper) || searchUpper.startsWith(basicAcronym)
+        const substringMatch = basicAcronym.includes(searchUpper)
+        
+        return commonAcronymMatch || multiWordAcronymMatch || basicMatch || substringMatch
       })
       
       const fuse = new Fuse(allEmployees, {
