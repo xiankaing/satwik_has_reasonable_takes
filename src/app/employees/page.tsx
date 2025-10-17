@@ -52,6 +52,7 @@ export default function EmployeeDirectory() {
   const [selectedEmployeePnL, setSelectedEmployeePnL] = useState<Employee | null>(null)
   const [pnlData, setPnlData] = useState<any>(null)
   const [pnlLoading, setPnlLoading] = useState(false)
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -284,80 +285,89 @@ export default function EmployeeDirectory() {
         </Select>
       </div>
 
-      <div className="bg-white rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Hire Date</TableHead>
-              <TableHead>Salary</TableHead>
-              <TableHead>Manager</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>ROI</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.isArray(employees) && employees.map((employee) => (
-              <TableRow key={employee.id}>
-                <TableCell className="font-medium">{employee.name}</TableCell>
-                <TableCell>{employee.title}</TableCell>
-                <TableCell>{employee.department}</TableCell>
-                <TableCell>{employee.email}</TableCell>
-                <TableCell>{employee.phone || '-'}</TableCell>
-                <TableCell>{new Date(employee.hireDate).toLocaleDateString()}</TableCell>
-                <TableCell>${employee.salary.toLocaleString()}</TableCell>
-                <TableCell>{employee.manager?.name || '-'}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    employee.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {employee.status}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {employee.pnlSummary ? (
-                    <ROIBadge roi={employee.pnlSummary.roi} size="sm" />
-                  ) : (
-                    <span className="text-gray-400 text-xs">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => fetchEmployeePnL(employee)}
-                      title="View P&L Details"
-                    >
-                      <TrendingUp className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(employee)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(employee.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+      <div className="bg-white rounded-lg border relative">
+        {/* Scroll indicators */}
+        <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-white to-transparent pointer-events-none z-10" />
+        <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-white to-transparent pointer-events-none z-10" />
+        
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-white z-20">Name</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Hire Date</TableHead>
+                <TableHead>Salary</TableHead>
+                <TableHead>Manager</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>ROI</TableHead>
+                <TableHead className="sticky right-0 bg-white z-20">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {Array.isArray(employees) && employees.map((employee) => (
+                <TableRow key={employee.id}>
+                  <TableCell className="font-medium sticky left-0 bg-white z-20">
+                    <button
+                      onClick={() => setSelectedEmployeeDetails(employee)}
+                      className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
+                    >
+                      {employee.name}
+                    </button>
+                  </TableCell>
+                  <TableCell>{employee.title}</TableCell>
+                  <TableCell>{employee.department}</TableCell>
+                  <TableCell>{new Date(employee.hireDate).toLocaleDateString()}</TableCell>
+                  <TableCell>${employee.salary.toLocaleString()}</TableCell>
+                  <TableCell>{employee.manager?.name || '-'}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      employee.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {employee.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {employee.pnlSummary ? (
+                      <ROIBadge roi={employee.pnlSummary.roi} size="sm" />
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="sticky right-0 bg-white z-20">
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fetchEmployeePnL(employee)}
+                        title="View P&L Details"
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(employee)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(employee.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
 
@@ -604,6 +614,154 @@ export default function EmployeeDirectory() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee Details Dialog */}
+      <Dialog open={!!selectedEmployeeDetails} onOpenChange={() => setSelectedEmployeeDetails(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Employee Details - {selectedEmployeeDetails?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedEmployeeDetails && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Name</Label>
+                  <div className="text-sm font-semibold">{selectedEmployeeDetails.name}</div>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Title</Label>
+                  <div className="text-sm">{selectedEmployeeDetails.title}</div>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Department</Label>
+                  <div className="text-sm">{selectedEmployeeDetails.department}</div>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-500">Status</Label>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    selectedEmployeeDetails.status === 'active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedEmployeeDetails.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Email</Label>
+                    <div className="text-sm">{selectedEmployeeDetails.email}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Phone</Label>
+                    <div className="text-sm">{selectedEmployeeDetails.phone || 'Not provided'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employment Information */}
+              <div>
+                <h3 className="text-sm font-semibold mb-3">Employment Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Hire Date</Label>
+                    <div className="text-sm">{new Date(selectedEmployeeDetails.hireDate).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Salary</Label>
+                    <div className="text-sm font-semibold">${selectedEmployeeDetails.salary.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Manager</Label>
+                    <div className="text-sm">{selectedEmployeeDetails.manager?.name || 'No manager (Top level)'}</div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-gray-500">Manager Title</Label>
+                    <div className="text-sm">{selectedEmployeeDetails.manager?.title || '-'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* P&L Summary */}
+              {selectedEmployeeDetails.pnlSummary && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Financial Performance</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <div className="text-xs text-green-600 font-medium whitespace-nowrap">Total Revenue</div>
+                      <div className="text-sm font-semibold text-green-800">
+                        ${selectedEmployeeDetails.pnlSummary.totalRevenue.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <div className="text-xs text-red-600 font-medium whitespace-nowrap">Total Cost</div>
+                      <div className="text-sm font-semibold text-red-800">
+                        ${selectedEmployeeDetails.pnlSummary.totalCost.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className={`p-3 rounded-lg ${
+                      selectedEmployeeDetails.pnlSummary.netProfit >= 0 ? 'bg-green-50' : 'bg-red-50'
+                    }`}>
+                      <div className={`text-xs font-medium whitespace-nowrap ${
+                        selectedEmployeeDetails.pnlSummary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        Net Profit
+                      </div>
+                      <div className={`text-sm font-semibold ${
+                        selectedEmployeeDetails.pnlSummary.netProfit >= 0 ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        ${selectedEmployeeDetails.pnlSummary.netProfit.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className={`p-3 rounded-lg ${
+                      selectedEmployeeDetails.pnlSummary.roi >= 0 ? 'bg-green-50' : 'bg-red-50'
+                    }`}>
+                      <div className={`text-xs font-medium whitespace-nowrap ${
+                        selectedEmployeeDetails.pnlSummary.roi >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        ROI
+                      </div>
+                      <div className={`text-sm font-semibold ${
+                        selectedEmployeeDetails.pnlSummary.roi >= 0 ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {selectedEmployeeDetails.pnlSummary.roi.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchEmployeePnL(selectedEmployeeDetails)}
+                >
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  View P&L Details
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleEdit(selectedEmployeeDetails)
+                    setSelectedEmployeeDetails(null)
+                  }}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Employee
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
