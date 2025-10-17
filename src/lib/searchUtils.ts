@@ -87,32 +87,39 @@ export function searchEmployees(employees: Employee[], searchTerm: string, isExa
     )
   }
 
-  // First, check for common search acronyms and basic acronym matches
-  const acronymMatches = employees.filter(employee => {
-    // Check if search term matches common acronyms
-    const commonAcronymMatch = commonAcronyms[searchUpper]?.some(acronymTitle => 
+  // Priority 1: Exact common acronym matches (highest priority)
+  const exactAcronymMatches = employees.filter(employee => {
+    return commonAcronyms[searchUpper]?.some(acronymTitle => 
       employee.title.toLowerCase().includes(acronymTitle.toLowerCase())
     )
-    
-    // Check for multi-word acronym matches (e.g., "VP ENG" -> "Vice President Engineering")
-    const multiWordAcronymMatch = searchUpper.split(' ').every(word => {
+  })
+  
+  // Priority 2: Multi-word acronym matches
+  const multiWordAcronymMatches = employees.filter(employee => {
+    return searchUpper.split(' ').every(word => {
       const wordAcronyms = commonAcronyms[word]
       return wordAcronyms?.some(acronymTitle => 
         employee.title.toLowerCase().includes(acronymTitle.toLowerCase()) ||
         employee.department.toLowerCase().includes(acronymTitle.toLowerCase())
       )
     })
-    
-    // Basic acronym match - check if search term appears as acronym in title/department
-    const basicMatch = employee.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      employee.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      employee.name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Check for substring matches in common acronyms
-    const basicAcronym = employee.title.split(' ').map(word => word.charAt(0)).join('').toLowerCase()
-    const substringMatch = basicAcronym.includes(searchUpper.toLowerCase())
-    
-    return commonAcronymMatch || multiWordAcronymMatch || basicMatch || substringMatch
+  })
+  
+  // Priority 3: Title acronym matches (check if search term matches title acronym)
+  const titleAcronymMatches = employees.filter(employee => {
+    const titleAcronym = employee.title.split(' ').map(word => word.charAt(0)).join('').toLowerCase()
+    return titleAcronym.includes(searchUpper.toLowerCase())
+  })
+  
+  // Priority 4: Basic text matches in title and name (not department to avoid false positives)
+  const basicMatches = employees.filter(employee => {
+    return employee.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           employee.name.toLowerCase().includes(searchTerm.toLowerCase())
+  })
+  
+  // Priority 5: Department matches (lowest priority for acronyms)
+  const departmentMatches = employees.filter(employee => {
+    return employee.department.toLowerCase().includes(searchTerm.toLowerCase())
   })
   
   // Use Fuse.js for fuzzy search
@@ -132,8 +139,16 @@ export function searchEmployees(employees: Employee[], searchTerm: string, isExa
   const fuseResults = fuse.search(searchTerm)
   const fuseMatches = fuseResults.map(result => result.item)
   
-  // Combine and deduplicate results, prioritizing acronym matches
-  const allMatches = [...acronymMatches, ...fuseMatches]
+  // Combine results in priority order, deduplicating as we go
+  const allMatches = [
+    ...exactAcronymMatches,
+    ...multiWordAcronymMatches,
+    ...titleAcronymMatches,
+    ...basicMatches,
+    ...departmentMatches,
+    ...fuseMatches
+  ]
+  
   const uniqueMatches = allMatches.filter((employee, index, self) => 
     index === self.findIndex(emp => emp.id === employee.id)
   )
