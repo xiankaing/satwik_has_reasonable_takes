@@ -45,8 +45,9 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(csvContent, {
       headers: {
-        'Content-Type': 'text/csv',
+        'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': 'attachment; filename="employees.csv"',
+        'Cache-Control': 'no-cache',
       },
     })
   } catch (error) {
